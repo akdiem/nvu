@@ -150,8 +150,7 @@ bd = 5
 cd = 0.03
 dd = 1.3
 Sx = 40000 * um**2
-#Ax = ((22*um)**2 -(18*um)**2) * np.pi
-#Ax = (20*um)**2 * np.pi
+Ax = 900 * um**2
 
 
 def nvu(t, y, Jrho_IN, x_rel):
@@ -247,7 +246,6 @@ def nvu(t, y, Jrho_IN, x_rel):
     
     
     # Vessel mechanics
-    Ax = (x_rel/(2*np.pi))**2 * np.pi
     fdp = 0.5 * dp * (x/np.pi - Ax/x) * cm # why *cm here? Is that the artery length?
     xd = x/x0
     sigmax = x3*(1 + np.tanh((xd-x1)/x2)) + x4*(xd-x5) - x8*(x6/(xd-x7))**2 - x9
@@ -302,14 +300,15 @@ def init():
     
 def K_glut_release(t1, t2):
     sizeJrho = 1600
+    sec = sizeJrho/(t2-t1)
     Max_neural_Kplus = 0.48*uM/s
     Max_neural_glut = 0.5
     Jrho_IN = np.zeros((sizeJrho,3))
     Jrho_IN[:,0] = np.linspace(t1, t2, sizeJrho)
-    it1 = 100
-    it2 = 40
-    it3 = 600
-    it4 = 10
+    it1 = int(2.5*sec)
+    it2 = int(sec)
+    it3 = int(15*sec)
+    it4 = int(0.25*sec)
     pos = it1
     Jrho_IN[pos+1:pos+it2+1,1] = Max_neural_Kplus * np.linspace(0, 1, it2)
     Jrho_IN[pos+1:pos+it2+1,2] = Max_neural_glut * np.linspace(0, 1, it2)
@@ -326,7 +325,7 @@ def main(fig_dims):
     y0 = init()
     x_rel = y0[13]
     t1 = 0
-    t2 = 40 
+    t2 = 50 
     Jrho_IN = K_glut_release(t1, t2)
     t = np.linspace(t1, t2, 200)
     #sol = odeint(nvu, y0, t, args=(Jrho_IN, x_rel))
