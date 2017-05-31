@@ -398,7 +398,7 @@ if __name__ == "__main__":
     plt.rcParams['font.serif'] = ['Arial']
     
     WIDTH = 510  # the number latex snp.pits out
-    FACTOR = 1.0  # the fraction of the width you'd like the figure to occupy
+    FACTOR = 0.5  # the fraction of the width you'd like the figure to occupy
     fig_width_pt  = WIDTH * FACTOR
     inches_per_pt = 1.0 / 72.27
     golden_ratio  = (np.sqrt(5) - 1.0) / 2.0  # because it looks good
