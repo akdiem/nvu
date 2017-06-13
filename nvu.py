@@ -44,24 +44,18 @@ Ki = 0.03 * uM
 Kact = 0.17 * uM
 Vmax = 20 * uM/s
 Kp = 0.24 * uM
-#Kp = 0.192 * uM
 Pl = 5.2 * uM/s
 calcium_er = 400 * uM # value from Bennet et al.
 Castr = 40 * pF
 gamma = 1970 * mV/uM
-#gamma = 834.3/2 * mV/uM
 gtrpv = 200 * pS
-#gtrpv = 50 * pS
 vtrpv = 6 * mV
 kon = 2 * 1/(uM*s)
 Kinh = 0.1 * uM
 tautrpv = 0.9 * 1/s
 eps12 = 0.16
-#eps12 = 0.1
 kappa = 0.04
-#kappa = 0.1
 gammacai = 0.2 * uM
-#gammacai = 0.01 * uM
 gammacae = 0.2 * mM
 v1trpv = 120 * mV
 v2trpv = 13 * mV
@@ -77,11 +71,8 @@ Ca3bk = 400 * nM
 Ca4bk = 150 * nM
 gbk = 225.6 * pS
 vbk = -95 * mV
-#vbk = -70 * mV
 gleak = 78.54 * pS
 vleak = -70 * mV
-#gleak = 2 * pS
-#vleak = -60 * mV
 Csmc = 19.635 * pF
 gkir0 = 145 * pS
 vkir1 = 57 * mV
@@ -121,17 +112,17 @@ we = 0.9
 x0 = 188.5 * um
 x1 = 1.2
 x2 = 0.13
-x3 = 2.2443
-x4 = 0.71182
+x3 = 2.24425
+x4 = 0.711816
 x5 = 0.8
 x6 = 0.01
-x7 = 0.32134
+x7 = 0.32133758
 x8 = 0.88977
 x9 = 0.0090463
 sigma0h = 3e6 * dyn/cm**2
 u1 = 41.76
-u2 = 0.047396
-u3 = 0.0584
+u2 = 4.73958e-2
+u3 = 5.83999e-2
 wm = 0.7
 kpsi = 3.3
 Cam = 500 * nM
@@ -150,7 +141,7 @@ bd = 5
 cd = 0.03
 dd = 1.3
 Sx = 40000 * um**2
-Ax = 900 * um**2
+Ax = 502.65 * um**2
 
 
 def nvu(t, y, Jrho_IN, x_rel):
@@ -176,12 +167,12 @@ def nvu(t, y, Jrho_IN, x_rel):
     # Synaptic space
     JSigK = JSigKkNa * potassium_s/(potassium_s + KKoa)
     JKss = interp1d(Jrho_IN[:,0], Jrho_IN[:,1], bounds_error=False, fill_value=0)
-    potassium_s_dt = JKss(t) - JSigK
+    potassium_s_dt = (JKss(t) - JSigK)
     
     
     # Astrocytic space
     rhos = interp1d(Jrho_IN[:,0], Jrho_IN[:,2], bounds_error=False, fill_value=0)
-    G = (rhos(t)+delta)/(KG + rhos(t) + delta)
+    G = (rhos(t) + delta)/(KG + rhos(t) + delta)
     ip3_dt = rh*G - kdeg*ip3
     Jip3 = Jmax * ((ip3/(ip3+Ki)) * (calcium_a/(calcium_a+Kact)) * h)**3 *\
         (1 - calcium_a/calcium_er)
@@ -191,7 +182,7 @@ def nvu(t, y, Jrho_IN, x_rel):
     Jtrpv = -Itrpv/(Castr*gamma)
     calcium_a_dt = beta * (Jip3 - Jpump + Jleak + Jtrpv)
     h_dt = kon * (Kinh - (calcium_a + Kinh) * h)
-    tauca = tautrpv / (calcium_p/mM)
+    tauca = tautrpv / (calcium_p/uM)
     eps = (x - x_rel)/x_rel
     Hca = calcium_a/gammacai + calcium_p/gammacae
     # sinf is inconsistent between code and equations
@@ -208,7 +199,6 @@ def nvu(t, y, Jrho_IN, x_rel):
     Ileak = gleak * (Vk - vleak)
     Isigk = -JSigK * Castr * gamma
     Vk_dt = 1/Castr * (-Isigk - Ibk - Ileak - Itrpv)
-#    print(Vk, Vk_dt, -Isigk, -Ibk, -Ileak, -Itrpv)
     
     
     # Perivascular space
@@ -219,7 +209,7 @@ def nvu(t, y, Jrho_IN, x_rel):
     Jkir = Ikir/(Csmc*gamma)
     potassium_p_dt = Jbk/VRpa + Jkir/VRps - Rdecay * (potassium_p -\
         potassium_p_min)
-    v1 = (-17.4-12*(dp/mmHg)/200)*mV
+    v1 = (-17.4-(12*(dp/mmHg)/200))*mV
     minf = 0.5 * (1 + np.tanh((Vm-v1)/v2))
     Ica = gca * minf * (Vm - vca)
     Jca = Ica/(Csmc*gamma)
@@ -234,7 +224,7 @@ def nvu(t, y, Jrho_IN, x_rel):
     k_dt = 1/tauk * (kinf - k)
     Il = gl * (Vm - vl)
     Ik = gk * n * (Vm - vk)
-    Vm_dt = 1/Csmc * (-Il - Ik - Ica - Ikir)
+    Vm_dt = (1/Csmc) * (-Il - Ik - Ica - Ikir)
     v3 = -(v5/2) * np.tanh((calcium_smc-Ca3)/Ca4) + v6
     lamn = phin * np.cosh(0.5*(Vm-v3)/v4)
     ninf = 0.5 * (1 + np.tanh((Vm-v3)/v4))
@@ -242,22 +232,23 @@ def nvu(t, y, Jrho_IN, x_rel):
     
     # Vessel SMC calcium
     rho_smc = (Kd+calcium_smc)**2/((Kd+calcium_smc)**2 + Kd*Bt)
-    calcium_smc_dt = -rho_smc * (Ica*alpha + kca*calcium_smc)
+    calcium_smc_dt = -rho_smc * (alpha*Ica + kca*calcium_smc)
     
     
     # Vessel mechanics
-    fdp = 0.5 * dp * (x/np.pi - Ax/x) * cm # why *cm here? Is that the artery length?
+    fdp = 0.5 * dp * (x/np.pi - Ax/x) * um # why *cm here? Is that the artery length?
     xd = x/x0
     sigmax = x3*(1 + np.tanh((xd-x1)/x2)) + x4*(xd-x5) - x8*(x6/(xd-x7))**2 - x9
     fx = we*Sx*sigmax*sigma0h
-    u = x-yy
-    ud = u/x0
+    yd = yy/x0
+    ud = xd-yd
     sigmau = u2 * np.exp(u1*ud) - u3
+    if sigmau < 0:
+        sigmau = 1e-5
     fu = wm*Sx*sigmau*sigma0h
     x_dt = 1/tau * (fdp - fx - fu)
     psi = calcium_smc**q/(Cam**q+calcium_smc**q)
     omega_dt = kpsi * (psi/(psim+psi) - omega)
-    yd = yy/x0
     psiref = Caref**q/(Cam**q+Caref**q)
     omega_ref = psiref/(psim + psiref)
     sigmay0 = sigmay0h * omega/omega_ref
@@ -265,10 +256,9 @@ def nvu(t, y, Jrho_IN, x_rel):
     sigmay = sigmay0/sigma0h * (np.exp(-(yd-y0)**2/(2*sy**2)) - y3)/(1-y3)
     cond = sigmau/sigmay
     if cond < 1:
-        ycond = -vref * psi/psiref * ad * (1-cond)/(ad+cond)
+        ycond = -vref * (psi/psiref) * ad * (1-cond)/(ad+cond)
     else:
         ycond = cd*(np.exp(bd * (cond-dd)) - np.exp(bd * (1-dd)))
-        #print(sigmay0)
     yy_dt = x0*ycond
     
     return [potassium_s_dt, ip3_dt, calcium_a_dt, h_dt, ss_dt, eet_dt, nbk_dt,
@@ -324,12 +314,41 @@ def K_glut_release(t1, t2):
 def main(fig_dims):
     y0 = init()
     x_rel = y0[13]
+    
+    # Equilibration
+    t1 = -20
+    t2 = 0
+    n = 100
+    Jrho_IN = np.zeros((n,3))
+    Jrho_IN[:,0] = np.linspace(t1, t2, n)
+    t = np.linspace(t1, t2, 200)    
+    ode15s = ode(nvu)
+    ode15s.set_f_params(Jrho_IN, x_rel)
+    ode15s.set_integrator('lsoda')
+    ode15s.set_initial_value(y0, t=t1)
+    nt = len(t)
+    sol = np.zeros([nt, len(y0)])
+    sol[0,:] = y0
+    for i in range(1,nt):
+        if ode15s.successful():
+            sol[i,:] = ode15s.integrate(t[i])
+    y0 = sol[-1,:]
+#    
+#    plt.figure(figsize=fig_dims)
+#    plt.plot(t, sol[:,7]/mV, label="", lw=2)
+#    plt.xlabel("time")
+#    plt.ylabel("")
+#    plt.show()
+#    
+#    sys.exit()
+    
+
+    
+    # Simulation
     t1 = 0
     t2 = 50 
     Jrho_IN = K_glut_release(t1, t2)
-    t = np.linspace(t1, t2, 200)
-    #sol = odeint(nvu, y0, t, args=(Jrho_IN, x_rel))
-    
+    t = np.linspace(t1, t2, 200)    
     ode15s = ode(nvu)
     ode15s.set_f_params(Jrho_IN, x_rel)
     ode15s.set_integrator('lsoda')
