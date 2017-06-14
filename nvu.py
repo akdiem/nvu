@@ -243,8 +243,6 @@ def nvu(t, y, Jrho_IN, x_rel):
     yd = yy/x0
     ud = xd-yd
     sigmau = u2 * np.exp(u1*ud) - u3
-    if sigmau < 0:
-        sigmau = 1e-5
     fu = wm*Sx*sigmau*sigma0h
     x_dt = 1/tau * (fdp - fx - fu)
     psi = calcium_smc**q/(Cam**q+calcium_smc**q)
