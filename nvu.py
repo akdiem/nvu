@@ -312,7 +312,10 @@ def K_glut_release(t1, t2):
 def main(fig_dims):
     y0 = init()
     x_rel = y0[13]
-    
+    integrator = "lsoda"
+    atol = 1e-7
+    rtol = 1e-7
+
     # Equilibration
     t1 = -20
     t2 = 0
@@ -322,7 +325,7 @@ def main(fig_dims):
     t = np.linspace(t1, t2, 200)    
     ode15s = ode(nvu)
     ode15s.set_f_params(Jrho_IN, x_rel)
-    ode15s.set_integrator('lsoda')
+    ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
     ode15s.set_initial_value(y0, t=t1)
     nt = len(t)
     sol = np.zeros([nt, len(y0)])
@@ -349,7 +352,7 @@ def main(fig_dims):
     t = np.linspace(t1, t2, 200)    
     ode15s = ode(nvu)
     ode15s.set_f_params(Jrho_IN, x_rel)
-    ode15s.set_integrator('lsoda')
+    ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
     ode15s.set_initial_value(y0, t=t1)
     nt = len(t)
     sol = np.zeros([nt, len(y0)])
