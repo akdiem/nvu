@@ -333,16 +333,7 @@ def main(fig_dims):
     for i in range(1,nt):
         if ode15s.successful():
             sol[i,:] = ode15s.integrate(t[i])
-    y0 = sol[-1,:]
-#    
-#    plt.figure(figsize=fig_dims)
-#    plt.plot(t, sol[:,7]/mV, label="", lw=2)
-#    plt.xlabel("time")
-#    plt.ylabel("")
-#    plt.show()
-#    
-#    sys.exit()
-    
+    y0 = sol[-1,:]    
 
     
     # Simulation
@@ -359,56 +350,33 @@ def main(fig_dims):
     sol[0,:] = y0
     for i in range(1,nt):
         if ode15s.successful():
-            sol[i,:] = ode15s.integrate(t[i])    
+            sol[i,:] = ode15s.integrate(t[i])  
     
-    plt.figure(figsize=fig_dims)
-    plt.plot(t, sol[:,0]/uM, label="", lw=2)
-    plt.xlabel("time")
-    plt.ylabel("")
+    f, axarr = plt.subplots(4, 2)
+    f.set_size_inches(fig_dims[0], h=fig_dims[1])
+    # left side
+    axarr[0, 0].plot(t, sol[:,0]/uM, label="", lw=2)
+    axarr[0, 0].set_ylabel("K+ (uM)")
+    axarr[1, 0].plot(t, sol[:,1]/uM, label="", lw=2)
+    axarr[1, 0].set_ylabel("IP3 (uM)")
+    axarr[2, 0].plot(t, sol[:,2]/uM, label="", lw=2)
+    axarr[2, 0].set_ylabel("Ca2+ ast (uM)")
+    axarr[3, 0].plot(t, sol[:,5]/uM, label="", lw=2)
+    axarr[3, 0].set_ylabel("EET (uM)")
+    # right side
+    axarr[0, 1].plot(t, sol[:,7]/mV, label="", lw=2)
+    axarr[0, 1].set_ylabel("Vk (mV)")
+    axarr[1, 1].plot(t, sol[:,8]/mM, label="", lw=2)
+    axarr[1, 1].set_ylabel("K+ pvs (mM)")
+    axarr[2, 1].plot(t, sol[:,14]/uM, label="", lw=2)
+    axarr[2, 1].set_ylabel("Ca2+ smc (uM)")
+    axarr[3, 1].plot(t, sol[:,13]/(2*np.pi*um), label="", lw=2)
+    axarr[3, 1].set_ylabel("r (um)")
+    # Fine-tune figure; hide x ticks for top plots
+    plt.setp([a.get_xticklabels() for a in axarr[0,:]], visible=False)
+    plt.setp([a.get_xticklabels() for a in axarr[1,:]], visible=False)
+    plt.setp([a.get_xticklabels() for a in axarr[2,:]], visible=False)
     plt.show()
-    
-    plt.figure(figsize=fig_dims)
-    plt.plot(t, sol[:,1]/uM, label="", lw=2)
-    plt.xlabel("time")
-    plt.ylabel("")
-    plt.show()
-    
-    plt.figure(figsize=fig_dims)
-    plt.plot(t, sol[:,2]/uM, label="", lw=2)
-    plt.xlabel("time")
-    plt.ylabel("")
-    plt.show()
-    
-    plt.figure(figsize=fig_dims)
-    plt.plot(t, sol[:,5]/uM, label="", lw=2)
-    plt.xlabel("time")
-    plt.ylabel("")
-    plt.show()
-    
-    plt.figure(figsize=fig_dims)
-    plt.plot(t, sol[:,7]/mV, label="", lw=2)
-    plt.xlabel("time")
-    plt.ylabel("")
-    plt.show()
-    
-    plt.figure(figsize=fig_dims)
-    plt.plot(t, sol[:,8]/mM, label="", lw=2)
-    plt.xlabel("time")
-    plt.ylabel("")
-    plt.show()
-    
-    plt.figure(figsize=fig_dims)
-    plt.plot(t, sol[:,14]/uM, label="", lw=2)
-    plt.xlabel("time")
-    plt.ylabel("")
-    plt.show()
-    
-    plt.figure(figsize=fig_dims)
-    plt.plot(t, sol[:,13]/(2*np.pi*um), label="", lw=2)
-    plt.xlabel("time")
-    plt.ylabel("")
-    plt.show()
-    
     
     
     
@@ -421,7 +389,7 @@ if __name__ == "__main__":
     plt.rcParams['font.serif'] = ['Arial']
     
     WIDTH = 510  # the number latex snp.pits out
-    FACTOR = 0.5  # the fraction of the width you'd like the figure to occupy
+    FACTOR = 1.2  # the fraction of the width you'd like the figure to occupy
     fig_width_pt  = WIDTH * FACTOR
     inches_per_pt = 1.0 / 72.27
     golden_ratio  = (np.sqrt(5) - 1.0) / 2.0  # because it looks good
