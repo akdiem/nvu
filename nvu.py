@@ -144,9 +144,78 @@ Sx = 40000 * um**2
 Ax = 502.65 * um**2
 
 
+def synapse(t, potassium_s, Jrho_IN):
+    JSigK = JSigKkNa * potassium_s/(potassium_s + KKoa)
+    JKss = interp1d(Jrho_IN[:,0], Jrho_IN[:,1], bounds_error=False, fill_value=0)
+    potassium_s_dt = (JKss(t) - JSigK)
+    return potassium_s_dt, JSigK
+
+
+def astrocyte(t, ip3, calcium_a, h, ss, Vk, calcium_p, x, eet, nbk, Jrho_IN,
+              x_rel, JSigK):
+    rhos = interp1d(Jrho_IN[:,0], Jrho_IN[:,2], bounds_error=False,
+                    fill_value=0)
+    G = (rhos(t) + delta)/(KG + rhos(t) + delta)
+    ip3_dt = rh*G - kdeg*ip3
+    Jip3 = Jmax * (ip3/(ip3+Ki) * calcium_a/(calcium_a+Kact) * h)**3 *\
+        (1 - calcium_a/calcium_er)
+    Jpump = Vmax * calcium_a**2 / (calcium_a**2 + Kp**2)
+    Jleak = Pl * (1 - calcium_a/calcium_er)
+    Itrpv = gtrpv * ss * (Vk - vtrpv)
+    Jtrpv = -Itrpv/(Castr*gamma)
+    calcium_a_dt = beta * (Jip3 - Jpump + Jleak + Jtrpv)
+    h_dt = kon * (Kinh - (calcium_a + Kinh) * h)
+    tauca = tautrpv / (calcium_p/uM)
+    eps = (x - x_rel)/x_rel
+    Hca = calcium_a/gammacai + calcium_p/gammacae
+    sinf = (1/(1 + np.exp(-(eps-eps12)/kappa))) * (1/(1+Hca) *\
+        (Hca + np.tanh((Vk - v1trpv)/v2trpv)))
+    ss_dt = 1/tauca * (sinf - ss)
+    eet_dt = Veet * (calcium_a - calcium_a_min) - keet*eet
+    v3bk = -(v5bk/2) * np.tanh((calcium_a-Ca3bk)/Ca4bk) + v6bk
+    phibk = psibk * np.cosh((Vk-v3bk)/(2*v4bk))
+    ninf = 0.5 * (1 + np.tanh((Vk + eetshift*eet - v3bk)/v4bk))
+    nbk_dt = phibk * (ninf - nbk)
+    Ibk = gbk * nbk * (Vk - vbk)
+    Ileak = gleak * (Vk - vleak)
+    Isigk = -JSigK * Castr * gamma
+    Vk_dt = 1/Castr * (-Isigk - Ibk - Ileak - Itrpv)
+    return ip3_dt, calcium_a_dt, h_dt, ss_dt, eet_dt, nbk_dt, Vk_dt, Ibk, Jtrpv
+
+
+def perivascular_space(potassium_p, k, Vm, calcium_p, Ibk, Jtrpv):
+    Jbk = Ibk/(Castr*gamma)
+    gkir = gkir0 * np.sqrt(potassium_p/mM)
+    vkir = vkir1 * np.log10(potassium_p/mM) - vkir2
+    Ikir = gkir * k * (Vm - vkir)
+    Jkir = Ikir/(Csmc*gamma)
+    potassium_p_dt = Jbk/VRpa + Jkir/VRps - Rdecay * (potassium_p -\
+        potassium_p_min)
+    v1 = (-17.4-(12*(dp/mmHg)/200))*mV
+    minf = 0.5 * (1 + np.tanh((Vm-v1)/v2))
+    Ica = gca * minf * (Vm - vca)
+    Jca = Ica/(Csmc*gamma)
+    calcium_p_dt = -Jtrpv - Jca - Cadecay * (calcium_p - calcium_p_min)
+    return potassium_p_dt, calcium_p_dt, vkir, Ikir, Ica
+
+
+def ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir):
+    alphak = alphakir / (1 + np.exp((Vm - vkir + av1)/av2))
+    betak = betakir * np.exp(bv2/mV * (Vm - vkir + bv1)/mV)
+    tauk = 1/(alphak+betak)
+    kinf = alphak/(alphak+betak)
+    k_dt = 1/tauk * (kinf - k)
+    Il = gl * (Vm - vl)
+    Ik = gk * n * (Vm - vk)
+    Vm_dt = (1/Csmc) * (-Il - Ik - Ica - Ikir)
+    v3 = -(v5/2) * np.tanh((calcium_smc-Ca3)/Ca4) + v6
+    lamn = phin * np.cosh(0.5*(Vm-v3)/v4)
+    ninf = 0.5 * (1 + np.tanh((Vm-v3)/v4))
+    n_dt = lamn * (ninf - n)
+    return k_dt, Vm_dt, n_dt
+
+
 def vessel_mechanics(calcium_smc, x, yy, omega, Ica):
-    # Ion currents
-    
     # SMC calcium
     rho_smc = (Kd+calcium_smc)**2/((Kd+calcium_smc)**2 + Kd*Bt)
     calcium_smc_dt = -rho_smc * (alpha*Ica + kca*calcium_smc)
@@ -199,71 +268,22 @@ def nvu(t, y, Jrho_IN, x_rel):
     omega = y[15]
     yy = y[16]
     
-
     # Synaptic space
-    JSigK = JSigKkNa * potassium_s/(potassium_s + KKoa)
-    JKss = interp1d(Jrho_IN[:,0], Jrho_IN[:,1], bounds_error=False, fill_value=0)
-    potassium_s_dt = (JKss(t) - JSigK)
-    
+    potassium_s_dt, JSigK = synapse(t, potassium_s, Jrho_IN)    
     
     # Astrocytic space
-    rhos = interp1d(Jrho_IN[:,0], Jrho_IN[:,2], bounds_error=False, fill_value=0)
-    G = (rhos(t) + delta)/(KG + rhos(t) + delta)
-    ip3_dt = rh*G - kdeg*ip3
-    Jip3 = Jmax * (ip3/(ip3+Ki) * calcium_a/(calcium_a+Kact) * h)**3 *\
-        (1 - calcium_a/calcium_er)
-    Jpump = Vmax * calcium_a**2 / (calcium_a**2 + Kp**2)
-    Jleak = Pl * (1 - calcium_a/calcium_er)
-    Itrpv = gtrpv * ss * (Vk - vtrpv)
-    Jtrpv = -Itrpv/(Castr*gamma)
-    calcium_a_dt = beta * (Jip3 - Jpump + Jleak + Jtrpv)
-    h_dt = kon * (Kinh - (calcium_a + Kinh) * h)
-    tauca = tautrpv / (calcium_p/uM)
-    eps = (x - x_rel)/x_rel
-    Hca = calcium_a/gammacai + calcium_p/gammacae
-    sinf = (1/(1 + np.exp(-(eps-eps12)/kappa))) * (1/(1+Hca) *\
-        (Hca + np.tanh((Vk - v1trpv)/v2trpv)))
-    ss_dt = 1/tauca * (sinf - ss)
-    eet_dt = Veet * (calcium_a - calcium_a_min) - keet*eet
-    v3bk = -(v5bk/2) * np.tanh((calcium_a-Ca3bk)/Ca4bk) + v6bk
-    phibk = psibk * np.cosh((Vk-v3bk)/(2*v4bk))
-    ninf = 0.5 * (1 + np.tanh((Vk + eetshift*eet - v3bk)/v4bk))
-    nbk_dt = phibk * (ninf - nbk)
-    Ibk = gbk * nbk * (Vk - vbk)
-    Ileak = gleak * (Vk - vleak)
-    Isigk = -JSigK * Castr * gamma
-    Vk_dt = 1/Castr * (-Isigk - Ibk - Ileak - Itrpv)
-    
+    ip3_dt, calcium_a_dt, h_dt, ss_dt, eet_dt, nbk_dt, Vk_dt, Ibk, Jtrpv =\
+        astrocyte(t, ip3, calcium_a, h, ss, Vk, calcium_p, x, eet, nbk,
+                  Jrho_IN, x_rel, JSigK)    
     
     # Perivascular space
-    Jbk = Ibk/(Castr*gamma)
-    gkir = gkir0 * np.sqrt(potassium_p/mM)
-    vkir = vkir1 * np.log10(potassium_p/mM) - vkir2
-    Ikir = gkir * k * (Vm - vkir)
-    Jkir = Ikir/(Csmc*gamma)
-    potassium_p_dt = Jbk/VRpa + Jkir/VRps - Rdecay * (potassium_p -\
-        potassium_p_min)
-    v1 = (-17.4-(12*(dp/mmHg)/200))*mV
-    minf = 0.5 * (1 + np.tanh((Vm-v1)/v2))
-    Ica = gca * minf * (Vm - vca)
-    Jca = Ica/(Csmc*gamma)
-    calcium_p_dt = -Jtrpv - Jca - Cadecay * (calcium_p - calcium_p_min)
-    
+    potassium_p_dt, calcium_p_dt, vkir, Ikir, Ica = perivascular_space(
+            potassium_p, k, Vm, calcium_p, Ibk, Jtrpv)   
     
     # Ion currents
-    alphak = alphakir / (1 + np.exp((Vm - vkir + av1)/av2))
-    betak = betakir * np.exp(bv2/mV * (Vm - vkir + bv1)/mV)
-    tauk = 1/(alphak+betak)
-    kinf = alphak/(alphak+betak)
-    k_dt = 1/tauk * (kinf - k)
-    Il = gl * (Vm - vl)
-    Ik = gk * n * (Vm - vk)
-    Vm_dt = (1/Csmc) * (-Il - Ik - Ica - Ikir)
-    v3 = -(v5/2) * np.tanh((calcium_smc-Ca3)/Ca4) + v6
-    lamn = phin * np.cosh(0.5*(Vm-v3)/v4)
-    ninf = 0.5 * (1 + np.tanh((Vm-v3)/v4))
-    n_dt = lamn * (ninf - n)
+    k_dt, Vm_dt, n_dt = ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir)
     
+    # Vessel mechanics
     x_dt, calcium_smc_dt, omega_dt, yy_dt = vessel_mechanics(calcium_smc, x,
                                                              yy, omega, Ica)
     
