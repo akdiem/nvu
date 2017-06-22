@@ -144,6 +144,42 @@ Sx = 40000 * um**2
 Ax = 502.65 * um**2
 
 
+def vessel_mechanics(calcium_smc, x, yy, omega, Ica):
+    # Ion currents
+    
+    # SMC calcium
+    rho_smc = (Kd+calcium_smc)**2/((Kd+calcium_smc)**2 + Kd*Bt)
+    calcium_smc_dt = -rho_smc * (alpha*Ica + kca*calcium_smc)
+    
+    
+    # Vessel mechanics
+    fdp = 0.5 * dp * (x/np.pi - Ax/x) * um
+    xd = x/x0
+    sigmax = x3*(1 + np.tanh((xd-x1)/x2)) + x4*(xd-x5) - x8*(x6/(xd-x7))**2 - x9
+    fx = we*Sx*sigmax*sigma0h
+    yd = yy/x0
+    ud = xd-yd
+    sigmau = u2 * np.exp(u1*ud) - u3
+    fu = wm*Sx*sigmau*sigma0h
+    x_dt = 1/tau * (fdp - fx - fu)
+    psi = calcium_smc**q/(Cam**q+calcium_smc**q)
+    omega_dt = kpsi * (psi/(psim+psi) - omega)
+    psiref = Caref**q/(Cam**q+Caref**q)
+    omega_ref = psiref/(psim + psiref)
+    sigmay0 = sigmay0h * omega/omega_ref
+    sy = (y1/(yd+y2))**y4
+    sigmay = sigmay0/sigma0h * (np.exp(-(yd-y0)**2/(2*sy**2)) - y3)/(1-y3)
+    cond = sigmau/sigmay
+    if cond < 1:
+        ycond = -vref * (psi/psiref) * ad * (1-cond)/(ad+cond)
+    else:
+        ycond = cd*(np.exp(bd * (cond-dd)) - np.exp(bd * (1-dd)))
+    yy_dt = x0*ycond
+    
+    return x_dt, calcium_smc_dt, omega_dt, yy_dt
+    
+
+
 def nvu(t, y, Jrho_IN, x_rel):
     potassium_s = y[0]
     ip3 = y[1]
@@ -185,8 +221,6 @@ def nvu(t, y, Jrho_IN, x_rel):
     tauca = tautrpv / (calcium_p/uM)
     eps = (x - x_rel)/x_rel
     Hca = calcium_a/gammacai + calcium_p/gammacae
-    # sinf is inconsistent between code and equations
-    # gammacai is off by order of magnitude
     sinf = (1/(1 + np.exp(-(eps-eps12)/kappa))) * (1/(1+Hca) *\
         (Hca + np.tanh((Vk - v1trpv)/v2trpv)))
     ss_dt = 1/tauca * (sinf - ss)
@@ -230,34 +264,8 @@ def nvu(t, y, Jrho_IN, x_rel):
     ninf = 0.5 * (1 + np.tanh((Vm-v3)/v4))
     n_dt = lamn * (ninf - n)
     
-    # Vessel SMC calcium
-    rho_smc = (Kd+calcium_smc)**2/((Kd+calcium_smc)**2 + Kd*Bt)
-    calcium_smc_dt = -rho_smc * (alpha*Ica + kca*calcium_smc)
-    
-    
-    # Vessel mechanics
-    fdp = 0.5 * dp * (x/np.pi - Ax/x) * um
-    xd = x/x0
-    sigmax = x3*(1 + np.tanh((xd-x1)/x2)) + x4*(xd-x5) - x8*(x6/(xd-x7))**2 - x9
-    fx = we*Sx*sigmax*sigma0h
-    yd = yy/x0
-    ud = xd-yd
-    sigmau = u2 * np.exp(u1*ud) - u3
-    fu = wm*Sx*sigmau*sigma0h
-    x_dt = 1/tau * (fdp - fx - fu)
-    psi = calcium_smc**q/(Cam**q+calcium_smc**q)
-    omega_dt = kpsi * (psi/(psim+psi) - omega)
-    psiref = Caref**q/(Cam**q+Caref**q)
-    omega_ref = psiref/(psim + psiref)
-    sigmay0 = sigmay0h * omega/omega_ref
-    sy = (y1/(yd+y2))**y4
-    sigmay = sigmay0/sigma0h * (np.exp(-(yd-y0)**2/(2*sy**2)) - y3)/(1-y3)
-    cond = sigmau/sigmay
-    if cond < 1:
-        ycond = -vref * (psi/psiref) * ad * (1-cond)/(ad+cond)
-    else:
-        ycond = cd*(np.exp(bd * (cond-dd)) - np.exp(bd * (1-dd)))
-    yy_dt = x0*ycond
+    x_dt, calcium_smc_dt, omega_dt, yy_dt = vessel_mechanics(calcium_smc, x,
+                                                             yy, omega, Ica)
     
     return [potassium_s_dt, ip3_dt, calcium_a_dt, h_dt, ss_dt, eet_dt, nbk_dt,
             Vk_dt, potassium_p_dt, calcium_p_dt, k_dt, Vm_dt, n_dt, x_dt,
