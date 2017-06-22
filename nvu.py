@@ -236,7 +236,7 @@ def nvu(t, y, Jrho_IN, x_rel):
     
     
     # Vessel mechanics
-    fdp = 0.5 * dp * (x/np.pi - Ax/x) * um # why *cm here? Is that the artery length?
+    fdp = 0.5 * dp * (x/np.pi - Ax/x) * um
     xd = x/x0
     sigmax = x3*(1 + np.tanh((xd-x1)/x2)) + x4*(xd-x5) - x8*(x6/(xd-x7))**2 - x9
     fx = we*Sx*sigmax*sigma0h
