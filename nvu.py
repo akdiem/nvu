@@ -174,7 +174,7 @@ def nvu(t, y, Jrho_IN, x_rel):
     rhos = interp1d(Jrho_IN[:,0], Jrho_IN[:,2], bounds_error=False, fill_value=0)
     G = (rhos(t) + delta)/(KG + rhos(t) + delta)
     ip3_dt = rh*G - kdeg*ip3
-    Jip3 = Jmax * ((ip3/(ip3+Ki)) * (calcium_a/(calcium_a+Kact)) * h)**3 *\
+    Jip3 = Jmax * (ip3/(ip3+Ki) * calcium_a/(calcium_a+Kact) * h)**3 *\
         (1 - calcium_a/calcium_er)
     Jpump = Vmax * calcium_a**2 / (calcium_a**2 + Kp**2)
     Jleak = Pl * (1 - calcium_a/calcium_er)
@@ -289,7 +289,7 @@ def init():
 def K_glut_release(t1, t2):
     sizeJrho = 1600
     sec = sizeJrho/(t2-t1)
-    Max_neural_Kplus = 0.48*uM/s
+    Max_neural_Kplus = 0.55*uM/s
     Max_neural_glut = 0.5
     Jrho_IN = np.zeros((sizeJrho,3))
     Jrho_IN[:,0] = np.linspace(t1, t2, sizeJrho)
@@ -356,7 +356,7 @@ def main(fig_dims):
     f.set_size_inches(fig_dims[0], h=fig_dims[1])
     # left side
     axarr[0, 0].plot(t, sol[:,0]/uM, label="", lw=2)
-    axarr[0, 0].set_ylabel("K+ (uM)")
+    axarr[0, 0].set_ylabel("K+ syn (uM)")
     axarr[1, 0].plot(t, sol[:,1]/uM, label="", lw=2)
     axarr[1, 0].set_ylabel("IP3 (uM)")
     axarr[2, 0].plot(t, sol[:,2]/uM, label="", lw=2)
@@ -376,6 +376,9 @@ def main(fig_dims):
     plt.setp([a.get_xticklabels() for a in axarr[0,:]], visible=False)
     plt.setp([a.get_xticklabels() for a in axarr[1,:]], visible=False)
     plt.setp([a.get_xticklabels() for a in axarr[2,:]], visible=False)
+    # Fine-tune figure; make subplots farther from each other.
+    f.subplots_adjust(wspace=0.3, hspace=0.2)
+#    plt.savefig('figures/nvu.png', dpi=600, bbox_inches='tight')
     plt.show()
     
     
@@ -389,10 +392,10 @@ if __name__ == "__main__":
     plt.rcParams['font.serif'] = ['Arial']
     
     WIDTH = 510  # the number latex snp.pits out
-    FACTOR = 1.2  # the fraction of the width you'd like the figure to occupy
+    FACTOR = 1.0  # the fraction of the width you'd like the figure to occupy
     fig_width_pt  = WIDTH * FACTOR
     inches_per_pt = 1.0 / 72.27
-    golden_ratio  = (np.sqrt(5) - 1.0) / 2.0  # because it looks good
+    golden_ratio  = (np.sqrt(5) - 1.0) / 1.8  # because it looks good
     fig_width_in  = fig_width_pt * inches_per_pt  # figure width in inches
     fig_height_in = fig_width_in * golden_ratio   # figure height in inches
     fig_dims    = [fig_width_in, fig_height_in] # fig dims as a list
