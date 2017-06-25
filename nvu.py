@@ -142,6 +142,7 @@ cd = 0.03
 dd = 1.3
 Sx = 40000 * um**2
 Ax = 502.65 * um**2
+Lx = 1 * cm
 
 
 def synapse(t, potassium_s, Jrho_IN):
@@ -220,7 +221,6 @@ def vessel_mechanics(calcium_smc, x, yy, omega, Ica):
     rho_smc = (Kd+calcium_smc)**2/((Kd+calcium_smc)**2 + Kd*Bt)
     calcium_smc_dt = -rho_smc * (alpha*Ica + kca*calcium_smc)
     
-    
     # Vessel mechanics
     fdp = 0.5 * dp * (x/np.pi - Ax/x) * um
     xd = x/x0
@@ -292,7 +292,7 @@ def nvu(t, y, Jrho_IN, x_rel):
             calcium_smc_dt, omega_dt, yy_dt]
 
 
-def init():
+def init(r0):
     potassium_s = 2.92655044308714e-8
     ip3 = 5.37611796987610e-10
     calcium_a = 1.47220569018281e-07
@@ -306,7 +306,7 @@ def init():
     k = 8.01125818473096e-09
     Vm = 8.33004194103223e-05
     n = 0.283859572906570
-    x = 2*np.pi*20*um
+    x = 2*np.pi*r0
     calcium_smc = 3.41385670857693e-07
     omega = 0.536911672725179
     yy = 0.000115089683436595
@@ -339,8 +339,8 @@ def K_glut_release(t1, t2):
 
 def run_simulation(time, y0, Jrho_IN, x_rel):
     integrator = "lsoda"
-    atol = 1e-7
-    rtol = 1e-7
+    atol = 1e-5
+    rtol = 1e-5
     ode15s = ode(nvu)
     ode15s.set_f_params(Jrho_IN, x_rel)
     ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
@@ -385,8 +385,16 @@ def plot_solution(t, sol, fig_dims):
     plt.show()
     
     
+def perivascular_drainage(t, r, r_diff):
+    a = r - r_diff
+    b = r + r_diff
+    Pbm = -dp * a**2/(b**2 - a**2) * (1 - b**2/r**2)
+    return Pbm
+    
+    
 def main(fig_dims):
-    y0 = init()
+    r0 = 20*um
+    y0 = init(r0)
     x_rel = y0[13]
 
     # Equilibration
@@ -405,10 +413,17 @@ def main(fig_dims):
     nt = 200
     Jrho_IN = K_glut_release(t1, t2)
     t = np.linspace(t1, t2, nt)    
-    sol = run_simulation(t, y0, Jrho_IN, x_rel)  
+    sol = run_simulation(t, y0, Jrho_IN, x_rel)
     
     # Plot solution
     plot_solution(t, sol, fig_dims)
+    
+    # Perivascular drainage
+    r_diff = (Sx/Lx)/2
+    r = sol[:,13]/(2*np.pi)
+#    print(r)
+    Pbm = perivascular_drainage(t, r, r_diff)
+    np.savetxt('data/Pbm.csv', Pbm/mmHg, delimiter=',')
     
     
 if __name__ == "__main__":
