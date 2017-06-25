@@ -335,51 +335,26 @@ def K_glut_release(t1, t2):
     Jrho_IN[pos+1:pos+it4+1,1] = Max_neural_Kplus * np.linspace(1, 0, it4)
     Jrho_IN[pos+1:pos+it4+1,2] = Max_neural_glut * np.linspace(1, 0, it4)
     return Jrho_IN
-    
-    
-def main(fig_dims):
-    y0 = init()
-    x_rel = y0[13]
+
+
+def run_simulation(time, y0, Jrho_IN, x_rel):
     integrator = "lsoda"
     atol = 1e-7
     rtol = 1e-7
-
-    # Equilibration
-    t1 = -20
-    t2 = 0
-    n = 100
-    Jrho_IN = np.zeros((n,3))
-    Jrho_IN[:,0] = np.linspace(t1, t2, n)
-    t = np.linspace(t1, t2, 200)    
     ode15s = ode(nvu)
     ode15s.set_f_params(Jrho_IN, x_rel)
     ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
-    ode15s.set_initial_value(y0, t=t1)
-    nt = len(t)
+    ode15s.set_initial_value(y0, t=time[0])
+    nt = len(time)
     sol = np.zeros([nt, len(y0)])
     sol[0,:] = y0
-    for i in range(1,nt):
+    for i in range(1, nt):
         if ode15s.successful():
-            sol[i,:] = ode15s.integrate(t[i])
-    y0 = sol[-1,:]    
+            sol[i,:] = ode15s.integrate(time[i])
+    return sol
 
-    
-    # Simulation
-    t1 = 0
-    t2 = 50 
-    Jrho_IN = K_glut_release(t1, t2)
-    t = np.linspace(t1, t2, 200)    
-    ode15s = ode(nvu)
-    ode15s.set_f_params(Jrho_IN, x_rel)
-    ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
-    ode15s.set_initial_value(y0, t=t1)
-    nt = len(t)
-    sol = np.zeros([nt, len(y0)])
-    sol[0,:] = y0
-    for i in range(1,nt):
-        if ode15s.successful():
-            sol[i,:] = ode15s.integrate(t[i])  
-    
+
+def plot_solution(t, sol, fig_dims):
     f, axarr = plt.subplots(4, 2)
     f.set_size_inches(fig_dims[0], h=fig_dims[1])
     # left side
@@ -409,6 +384,31 @@ def main(fig_dims):
 #    plt.savefig('figures/nvu.png', dpi=600, bbox_inches='tight')
     plt.show()
     
+    
+def main(fig_dims):
+    y0 = init()
+    x_rel = y0[13]
+
+    # Equilibration
+    t1 = -20
+    t2 = 0
+    nt = 100
+    Jrho_IN = np.zeros((nt,3))
+    Jrho_IN[:,0] = np.linspace(t1, t2, nt)
+    t = np.linspace(t1, t2, nt)    
+    sol = run_simulation(t, y0, Jrho_IN, x_rel)
+    y0 = sol[-1,:]    
+    
+    # Simulation
+    t1 = 0
+    t2 = 50 
+    nt = 200
+    Jrho_IN = K_glut_release(t1, t2)
+    t = np.linspace(t1, t2, nt)    
+    sol = run_simulation(t, y0, Jrho_IN, x_rel)  
+    
+    # Plot solution
+    plot_solution(t, sol, fig_dims)
     
     
 if __name__ == "__main__":
