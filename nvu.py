@@ -28,7 +28,8 @@ pF = 1e-12 * F
 S = A/V
 pS = 1e-12 * S
 dyn = 1
-mmHg = 1333.22 * dyn/cm**2
+pa = 10 * dyn/cm**2
+mmHg = 133.322 * pa
 
 
 # Parameter
@@ -418,12 +419,16 @@ def main(fig_dims):
     # Plot solution
     plot_solution(t, sol, fig_dims)
     
-    # Perivascular drainage
-    r_diff = (Sx/Lx)/2
+    plt.plot(t, sol[:,-1]/um, label="", lw=2)
+    plt.show()
+    
+    # Export radius data
     r = sol[:,13]/(2*np.pi)
-#    print(r)
-    Pbm = perivascular_drainage(t, r, r_diff)
-    np.savetxt('data/Pbm.csv', Pbm/mmHg, delimiter=',')
+    r_diff = (Sx/Lx)/2
+    Ra = r - r_diff
+    Rb = r + r_diff
+    np.savetxt('data/Ra.csv', Ra/um, delimiter=',')
+    np.savetxt('data/Rb.csv', Rb/um, delimiter=',')
     
     
 if __name__ == "__main__":
