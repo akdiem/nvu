@@ -340,11 +340,11 @@ def K_glut_release(t1, t2):
     return Jrho_IN
 
 
-def run_simulation(time, y0, *args):
+def run_simulation(fun, time, y0, *args):
     integrator = "lsoda"
     atol = 1e-5
     rtol = 1e-5
-    ode15s = ode(nvu)
+    ode15s = ode(fun)
     ode15s.set_f_params(*args)
     ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
     ode15s.set_initial_value(y0, t=time[0])
@@ -399,6 +399,7 @@ def main(fig_dims):
     r0 = 20*um
     y0 = init(r0)
     x_rel = y0[13]
+    sol = np.zeros(y0.shape)
 
     # Equilibration
     t1 = -20
@@ -407,7 +408,7 @@ def main(fig_dims):
     Jrho_IN = np.zeros((nt,3))
     Jrho_IN[:,0] = np.linspace(t1, t2, nt)
     t = np.linspace(t1, t2, nt)
-    sol = run_simulation(t, y0, Jrho_IN, x_rel)
+    sol = run_simulation(nvu, t, y0, Jrho_IN, x_rel)
     y0 = sol[-1,:]
     
     # Simulation
