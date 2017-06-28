@@ -399,7 +399,7 @@ def main(fig_dims):
     r0 = 20*um
     y0 = init(r0)
     x_rel = y0[13]
-    sol = np.zeros(y0.shape)
+    sol = np.zeros(len(y0))
 
     # Equilibration
     t1 = -20
@@ -417,7 +417,7 @@ def main(fig_dims):
     nt = 200
     Jrho_IN = K_glut_release(t1, t2)
     t = np.linspace(t1, t2, nt)    
-    sol = run_simulation(t, y0, Jrho_IN, x_rel)
+    sol = run_simulation(nvu, t, y0, Jrho_IN, x_rel)
     
     # Plot solution
     plot_solution(t, sol, fig_dims)
