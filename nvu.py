@@ -270,6 +270,7 @@ def nvu(t, y, Jrho_IN, x_rel):
     calcium_smc = y[14]
     omega = y[15]
     yy = y[16]
+    amyloid = y[17]
     
     # Synaptic space
     potassium_s_dt, JSigK = synapse(t, potassium_s, Jrho_IN)    
@@ -290,9 +291,16 @@ def nvu(t, y, Jrho_IN, x_rel):
     x_dt, calcium_smc_dt, omega_dt, yy_dt = vessel_mechanics(calcium_smc, x,
                                                              yy, omega, Ica)
     
+    # Amyloid
+    k_n = 0.076 * 1/hr
+    k_p = 0.0745 * 1/hr
+    r = x/(2*np.pi)
+    r_rel = x_rel/(2*np.pi)
+    amyloid_dt = k_n * amyloid - k_p * amyloid * r/r_rel
+    
     return [potassium_s_dt, ip3_dt, calcium_a_dt, h_dt, ss_dt, eet_dt, nbk_dt,
             Vk_dt, potassium_p_dt, calcium_p_dt, k_dt, Vm_dt, n_dt, x_dt,
-            calcium_smc_dt, omega_dt, yy_dt]
+            calcium_smc_dt, omega_dt, yy_dt, amyloid_dt]
 
 
 def init(r0):
@@ -313,8 +321,9 @@ def init(r0):
     calcium_smc = 3.41385670857693e-07
     omega = 0.536911672725179
     yy = 0.000115089683436595
+    amyloid = 3.75e-8
     return [potassium_s, ip3, calcium_a, h, ss, eet, nbk, Vk, potassium_p,
-            calcium_p, k, Vm, n, x, calcium_smc, omega, yy]
+            calcium_p, k, Vm, n, x, calcium_smc, omega, yy, amyloid]
     
     
 def K_glut_release(t1, t2):
@@ -343,7 +352,7 @@ def K_glut_release(t1, t2):
 def run_simulation(fun, time, y0, *args):
     integrator = "lsoda"
     atol = 1e-5
-    rtol = 1e-5
+    rtol = 1e-6
     ode15s = ode(fun)
     ode15s.set_f_params(*args)
     ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
@@ -358,7 +367,7 @@ def run_simulation(fun, time, y0, *args):
 
 
 def plot_solution(t, sol, fig_dims):
-    f, axarr = plt.subplots(4, 2)
+    f, axarr = plt.subplots(5, 2)
     f.set_size_inches(fig_dims[0], h=fig_dims[1])
     # left side
     axarr[0, 0].plot(t, sol[:,0]/uM, label="", lw=2)
@@ -369,6 +378,8 @@ def plot_solution(t, sol, fig_dims):
     axarr[2, 0].set_ylabel("Ca2+ ast (uM)")
     axarr[3, 0].plot(t, sol[:,5]/uM, label="", lw=2)
     axarr[3, 0].set_ylabel("EET (uM)")
+    axarr[4, 0].plot(t, sol[:,17]/uM, label="", lw=2)
+    axarr[4, 0].set_ylabel("Abeta (uM)")
     # right side
     axarr[0, 1].plot(t, sol[:,7]/mV, label="", lw=2)
     axarr[0, 1].set_ylabel("Vk (mV)")
@@ -410,6 +421,9 @@ def main(fig_dims):
     t = np.linspace(t1, t2, nt)
     sol = run_simulation(nvu, t, y0, Jrho_IN, x_rel)
     y0 = sol[-1,:]
+    
+    # Plot solution
+#    plot_solution(t, sol, fig_dims)
     
     # Simulation
     t1 = 0
