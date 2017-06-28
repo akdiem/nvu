@@ -14,6 +14,8 @@ import sys
 
 # Units
 s = 1
+mi = 60 * s
+hr = 60 * mi
 cm = 1e-2
 um = 1e-4*cm
 mM = 1e-3
@@ -211,7 +213,7 @@ def ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir):
     Ik = gk * n * (Vm - vk)
     Vm_dt = (1/Csmc) * (-Il - Ik - Ica - Ikir)
     v3 = -(v5/2) * np.tanh((calcium_smc-Ca3)/Ca4) + v6
-    lamn = phin * np.cosh(0.5*(Vm-v3)/v4)
+    lamn = phin * np.cosh((Vm-v3)/(2*v4))
     ninf = 0.5 * (1 + np.tanh((Vm-v3)/v4))
     n_dt = lamn * (ninf - n)
     return k_dt, Vm_dt, n_dt
@@ -338,12 +340,12 @@ def K_glut_release(t1, t2):
     return Jrho_IN
 
 
-def run_simulation(time, y0, Jrho_IN, x_rel):
+def run_simulation(time, y0, *args):
     integrator = "lsoda"
     atol = 1e-5
     rtol = 1e-5
     ode15s = ode(nvu)
-    ode15s.set_f_params(Jrho_IN, x_rel)
+    ode15s.set_f_params(*args)
     ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
     ode15s.set_initial_value(y0, t=time[0])
     nt = len(time)
@@ -404,9 +406,9 @@ def main(fig_dims):
     nt = 100
     Jrho_IN = np.zeros((nt,3))
     Jrho_IN[:,0] = np.linspace(t1, t2, nt)
-    t = np.linspace(t1, t2, nt)    
+    t = np.linspace(t1, t2, nt)
     sol = run_simulation(t, y0, Jrho_IN, x_rel)
-    y0 = sol[-1,:]    
+    y0 = sol[-1,:]
     
     # Simulation
     t1 = 0
@@ -418,9 +420,6 @@ def main(fig_dims):
     
     # Plot solution
     plot_solution(t, sol, fig_dims)
-    
-    plt.plot(t, sol[:,-1]/um, label="", lw=2)
-    plt.show()
     
     # Export radius data
     r = sol[:,13]/(2*np.pi)
