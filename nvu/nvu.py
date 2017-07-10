@@ -85,7 +85,7 @@ VRps = 0.1
 gca = 157 * pS
 vca = 80 * mV
 v2 = 25 * mV
-dp = 60 * mmHg
+dp = 68.1 * mmHg
 Rdecay = 1 * 1/s
 potassium_p_min = 3 * mM
 Cadecay = 0.5 * 1/s
@@ -151,7 +151,7 @@ Lx = 1 * cm
 def synapse(t, potassium_s, Jrho_IN):
     JSigK = JSigKkNa * potassium_s/(potassium_s + KKoa)
     JKss = interp1d(Jrho_IN[:,0], Jrho_IN[:,1], bounds_error=False, fill_value=0)
-    potassium_s_dt = (JKss(t) - JSigK)
+    potassium_s_dt = JKss(t) - JSigK
     return potassium_s_dt, JSigK
 
 
@@ -196,6 +196,7 @@ def perivascular_space(potassium_p, k, Vm, calcium_p, Ibk, Jtrpv):
     potassium_p_dt = Jbk/VRpa + Jkir/VRps - Rdecay * (potassium_p -\
         potassium_p_min)
     v1 = (-17.4-(12*(dp/mmHg)/200))*mV
+#    v1 = -19.0 * mV
     minf = 0.5 * (1 + np.tanh((Vm-v1)/v2))
     Ica = gca * minf * (Vm - vca)
     Jca = Ica/(Csmc*gamma)
@@ -212,6 +213,7 @@ def ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir):
     Il = gl * (Vm - vl)
     Ik = gk * n * (Vm - vk)
     Vm_dt = (1/Csmc) * (-Il - Ik - Ica - Ikir)
+#    Vm_dt = 0
     v3 = -(v5/2) * np.tanh((calcium_smc-Ca3)/Ca4) + v6
     lamn = phin * np.cosh((Vm-v3)/(2*v4))
     ninf = 0.5 * (1 + np.tanh((Vm-v3)/v4))
@@ -219,11 +221,13 @@ def ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir):
     return k_dt, Vm_dt, n_dt
 
 
-def vessel_mechanics(calcium_smc, x, yy, omega, Ica):
+def vessel_mechanics(t, calcium_smc, x, yy, omega, Ica):
     # SMC calcium
     rho_smc = (Kd+calcium_smc)**2/((Kd+calcium_smc)**2 + Kd*Bt)
     calcium_smc_dt = -rho_smc * (alpha*Ica + kca*calcium_smc)
-    
+#    if t > 0:
+#        calcium_smc_dt = -rho_smc * (alpha*Ica + kca*calcium_smc)
+
     # Vessel mechanics
     fdp = 0.5 * dp * (x/np.pi - Ax/x) * um
     xd = x/x0
@@ -288,15 +292,15 @@ def nvu(t, y, Jrho_IN, x_rel):
     k_dt, Vm_dt, n_dt = ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir)
     
     # Vessel mechanics
-    x_dt, calcium_smc_dt, omega_dt, yy_dt = vessel_mechanics(calcium_smc, x,
+    x_dt, calcium_smc_dt, omega_dt, yy_dt = vessel_mechanics(t, calcium_smc, x,
                                                              yy, omega, Ica)
     
     # Amyloid
     k_n = 0.076 * 1/hr
-    k_p = 0.0745 * 1/hr
+    k_p = 0.083 * 1/hr
     r = x/(2*np.pi)
     r_rel = x_rel/(2*np.pi)
-    amyloid_dt = k_n * amyloid - k_p * amyloid * r/r_rel
+    amyloid_dt = k_n*amyloid - k_p*amyloid * r/r_rel
     
     return [potassium_s_dt, ip3_dt, calcium_a_dt, h_dt, ss_dt, eet_dt, nbk_dt,
             Vk_dt, potassium_p_dt, calcium_p_dt, k_dt, Vm_dt, n_dt, x_dt,
@@ -351,8 +355,8 @@ def K_glut_release(t1, t2):
 
 def run_simulation(fun, time, y0, *args):
     integrator = "lsoda"
-    atol = 1e-5
-    rtol = 1e-6
+    atol = 1e-7
+    rtol = 1e-7
     ode15s = ode(fun)
     ode15s.set_f_params(*args)
     ode15s.set_integrator(integrator, atol=atol, rtol=rtol)
@@ -367,7 +371,7 @@ def run_simulation(fun, time, y0, *args):
 
 
 def plot_solution(t, sol, fig_dims):
-    f, axarr = plt.subplots(5, 2)
+    f, axarr = plt.subplots(4, 2)
     f.set_size_inches(fig_dims[0], h=fig_dims[1])
     # left side
     axarr[0, 0].plot(t, sol[:,0]/uM, label="", lw=2)
@@ -378,8 +382,8 @@ def plot_solution(t, sol, fig_dims):
     axarr[2, 0].set_ylabel("Ca2+ ast (uM)")
     axarr[3, 0].plot(t, sol[:,5]/uM, label="", lw=2)
     axarr[3, 0].set_ylabel("EET (uM)")
-    axarr[4, 0].plot(t, sol[:,17]/uM, label="", lw=2)
-    axarr[4, 0].set_ylabel("Abeta (uM)")
+#    axarr[4, 0].plot(t, sol[:,17]/uM, label="", lw=2)
+#    axarr[4, 0].set_ylabel("Abeta (uM)")
     # right side
     axarr[0, 1].plot(t, sol[:,7]/mV, label="", lw=2)
     axarr[0, 1].set_ylabel("Vk (mV)")
@@ -393,6 +397,7 @@ def plot_solution(t, sol, fig_dims):
     plt.setp([a.get_xticklabels() for a in axarr[0,:]], visible=False)
     plt.setp([a.get_xticklabels() for a in axarr[1,:]], visible=False)
     plt.setp([a.get_xticklabels() for a in axarr[2,:]], visible=False)
+#    plt.setp([a.get_xticklabels() for a in axarr[3,:]], visible=False)
     # Fine-tune figure; make subplots farther from each other.
     f.subplots_adjust(wspace=0.3, hspace=0.2)
 #    plt.savefig('figures/nvu.png', dpi=600, bbox_inches='tight')
@@ -404,6 +409,15 @@ def perivascular_drainage(t, r, r_diff):
     b = r + r_diff
     Pbm = -dp * a**2/(b**2 - a**2) * (1 - b**2/r**2)
     return Pbm
+
+
+def plot_Ica(t, Vm):
+    v1 = (-17.4-(12*(dp/mmHg)/200))*mV
+    minf = 0.5 * (1 + np.tanh((Vm-v1)/v2))
+    Ica = gca * minf * (Vm - vca)
+    plt.plot(t, Vm)
+    plt.show()
+    return None
     
     
 def main(fig_dims):
@@ -423,7 +437,7 @@ def main(fig_dims):
     y0 = sol[-1,:]
     
     # Plot solution
-#    plot_solution(t, sol, fig_dims)
+    plot_solution(t, sol, fig_dims)
     
     # Simulation
     t1 = 0
@@ -432,6 +446,11 @@ def main(fig_dims):
     Jrho_IN = K_glut_release(t1, t2)
     t = np.linspace(t1, t2, nt)    
     sol = run_simulation(nvu, t, y0, Jrho_IN, x_rel)
+    
+#    plt.figure(figsize=fig_dims)
+#    plt.plot(t, sol[:,14]/uM, label="", lw=2)
+#    plt.ylabel("Ca2+ smc (uM)")
+#    plt.show()
     
     # Plot solution
     plot_solution(t, sol, fig_dims)
@@ -457,7 +476,7 @@ if __name__ == "__main__":
     FACTOR = 1.0  # the fraction of the width you'd like the figure to occupy
     fig_width_pt  = WIDTH * FACTOR
     inches_per_pt = 1.0 / 72.27
-    golden_ratio  = (np.sqrt(5) - 1.0) / 1.8  # because it looks good
+    golden_ratio  = (np.sqrt(5) - 1.0) / 3  # because it looks good
     fig_width_in  = fig_width_pt * inches_per_pt  # figure width in inches
     fig_height_in = fig_width_in * golden_ratio   # figure height in inches
     fig_dims    = [fig_width_in, fig_height_in] # fig dims as a list
