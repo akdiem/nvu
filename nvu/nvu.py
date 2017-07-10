@@ -5,150 +5,16 @@ Spyder Editor
 This is a temporary script file.
 """
 
+import utils
+
 import numpy as np
-from scipy.integrate import odeint, ode
+from scipy.integrate import ode
 from scipy.interpolate import interp1d
 import matplotlib.pylab as plt
 import sys
 
 
-# Units
-s = 1
-mi = 60 * s
-hr = 60 * mi
-cm = 1e-2
-um = 1e-4*cm
-mM = 1e-3
-uM = 1e-3 * mM
-nM = 1e-6 * mM
-C = 1
-A = C/s
-V = 1
-mV = 1e-3 * V
-F = C/V
-pF = 1e-12 * F
-S = A/V
-pS = 1e-12 * S
-dyn = 1
-pa = 10 * dyn/cm**2
-mmHg = 133.322 * pa
-
-
-# Parameter
-JSigKkNa = 0.6 * mM/s
-KKoa = 1.5 * mM
-rh = 4.8 * uM
-kdeg = 1.25 * 1/s
-KG = 8.82
-delta = 0.001235
-beta = 0.0244
-Jmax = 2880 * uM/s
-Ki = 0.03 * uM
-Kact = 0.17 * uM
-Vmax = 20 * uM/s
-Kp = 0.24 * uM
-Pl = 5.2 * uM/s
-calcium_er = 400 * uM # value from Bennet et al.
-Castr = 40 * pF
-gamma = 1970 * mV/uM
-gtrpv = 200 * pS
-vtrpv = 6 * mV
-kon = 2 * 1/(uM*s)
-Kinh = 0.1 * uM
-tautrpv = 0.9 * 1/s
-eps12 = 0.16
-kappa = 0.04
-gammacai = 0.2 * uM
-gammacae = 0.2 * mM
-v1trpv = 120 * mV
-v2trpv = 13 * mV
-Veet = 72 * 1/s
-calcium_a_min = 0.1 * uM
-keet = 7.1 * 1/s
-psibk = 2.664 * 1/s
-v4bk = 14.5 * mV
-v5bk = 8 * mV
-v6bk = -15 * mV
-eetshift = 2 * mV/uM
-Ca3bk = 400 * nM
-Ca4bk = 150 * nM
-gbk = 225.6 * pS
-vbk = -95 * mV
-gleak = 78.54 * pS
-vleak = -70 * mV
-Csmc = 19.635 * pF
-gkir0 = 145 * pS
-vkir1 = 57 * mV
-vkir2 = 130 * mV
-VRpa = 3.2e-5
-VRps = 0.1
-gca = 157 * pS
-vca = 80 * mV
-v2 = 25 * mV
-dp = 68.1 * mmHg
-Rdecay = 1 * 1/s
-potassium_p_min = 3 * mM
-Cadecay = 0.5 * 1/s
-calcium_p_min = 2000 * uM
-alphakir = 1020 * s
-av1 = 18 * mV
-av2 = 10.8 * mV
-betakir = 26.9 * s
-bv1 = 18 * mV
-bv2 = 0.06 * mV
-gl = 62.832 * pS
-vl = -70 * mV
-gk = 251.33 * pS
-vk = -80 * mV
-phin = 2.664
-Ca3 = 400 * nM
-Ca4 = 150 * nM
-v4 = 14.5 * mV
-v5 = 8 * mV
-v6 = -15 * mV
-tau = 0.2 * dyn/cm
-Kd = 1000 * nM
-Bt = 10000 * nM
-alpha = 4.3987e15 * nM/C
-kca = 1.3568e2 * 1/s
-we = 0.9
-x0 = 188.5 * um
-x1 = 1.2
-x2 = 0.13
-x3 = 2.24425
-x4 = 0.711816
-x5 = 0.8
-x6 = 0.01
-x7 = 0.32133758
-x8 = 0.88977
-x9 = 0.0090463
-sigma0h = 3e6 * dyn/cm**2
-u1 = 41.76
-u2 = 4.73958e-2
-u3 = 5.83999e-2
-wm = 0.7
-kpsi = 3.3
-Cam = 500 * nM
-psim = 0.3
-q = 3
-y0 = 0.928
-y1 = 0.639
-y2 = 0.35
-y3 = 0.78847
-y4 = 0.8
-sigmay0h = 2.6e6 * dyn/cm**2
-vref = 0.24
-Caref = 510 * nM
-ad = 0.28125
-bd = 5
-cd = 0.03
-dd = 1.3
-Sx = 40000 * um**2
-Ax = 502.65 * um**2
-Lx = 1 * cm
-
-
-def synapse(t, potassium_s, Jrho_IN):
+def synapse(t, potassium_s, Jrho_IN, JSigKkNa=0, KKoa=0, **kwargs):
     JSigK = JSigKkNa * potassium_s/(potassium_s + KKoa)
     JKss = interp1d(Jrho_IN[:,0], Jrho_IN[:,1], bounds_error=False, fill_value=0)
     potassium_s_dt = JKss(t) - JSigK
@@ -156,7 +22,13 @@ def synapse(t, potassium_s, Jrho_IN):
 
 
 def astrocyte(t, ip3, calcium_a, h, ss, Vk, calcium_p, x, eet, nbk, Jrho_IN,
-              x_rel, JSigK):
+              x_rel, JSigK, delta=0, KG=0, rh=0, kdeg=0, Jmax=0, Ki=0, Kact=0,
+              calcium_er=0, Vmax=0, Kp=0, Pl=0, gtrpv=0, vtrpv=0, Castr=0,
+              gamma=0, beta=0, kon=0, Kinh=0, tautrpv=0, uM=0, gammacai=0,
+              gammacae=0, eps12=0, kappa=0, v1trpv=0, v2trpv=0, Veet=0,
+              calcium_a_min=0, keet=0, v5bk=0, Ca3bk=0, Ca4bk=0, v6bk=0,
+              psibk=0, v4bk=0, eetshift=0, gbk=0, vbk=0, gleak=0, vleak=0,
+              **kwargs):
     rhos = interp1d(Jrho_IN[:,0], Jrho_IN[:,2], bounds_error=False,
                     fill_value=0)
     G = (rhos(t) + delta)/(KG + rhos(t) + delta)
@@ -187,7 +59,11 @@ def astrocyte(t, ip3, calcium_a, h, ss, Vk, calcium_p, x, eet, nbk, Jrho_IN,
     return ip3_dt, calcium_a_dt, h_dt, ss_dt, eet_dt, nbk_dt, Vk_dt, Ibk, Jtrpv
 
 
-def perivascular_space(potassium_p, k, Vm, calcium_p, Ibk, Jtrpv):
+def perivascular_space(potassium_p, k, Vm, calcium_p, Ibk, Jtrpv, Castr=0,
+                       gamma=0, gkir0=0, mM=0, vkir1=0, vkir2=0, Csmc=0,
+                       VRpa=0, VRps=0, Rdecay=0, potassium_p_min=0, dp=0,
+                       mmHg=0, mV=0, v2=0, gca=0, vca=0, Cadecay=0,
+                       calcium_p_min=0, **kwargs):
     Jbk = Ibk/(Castr*gamma)
     gkir = gkir0 * np.sqrt(potassium_p/mM)
     vkir = vkir1 * np.log10(potassium_p/mM) - vkir2
@@ -204,7 +80,9 @@ def perivascular_space(potassium_p, k, Vm, calcium_p, Ibk, Jtrpv):
     return potassium_p_dt, calcium_p_dt, vkir, Ikir, Ica
 
 
-def ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir):
+def ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir, alphakir=0, av1=0,
+                 av2=0, betakir=0, bv2=0, bv1=0, mV=0, gl=0, vl=0, gk=0, vk=0,
+                 Csmc=0, v5=0, Ca3=0, Ca4=0, v6=0, phin=0, v4=0, **kwargs):
     alphak = alphakir / (1 + np.exp((Vm - vkir + av1)/av2))
     betak = betakir * np.exp(bv2/mV * (Vm - vkir + bv1)/mV)
     tauk = 1/(alphak+betak)
@@ -221,7 +99,12 @@ def ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir):
     return k_dt, Vm_dt, n_dt
 
 
-def vessel_mechanics(t, calcium_smc, x, yy, omega, Ica):
+def vessel_mechanics(t, calcium_smc, x, yy, omega, Ica, Kd=0, Bt=0, alpha=0,
+                     kca=0, dp=0, Ax=0, um=0, x0=0, x3=0, x1=0, x2=0, x4=0,
+                     x5=0, x8=0, x6=0, x7=0, x9=0, we=0, Sx=0, sigmax=0,
+                     sigma0h=0, u2=0, u1=0, u3=0, wm=0, tau=0, Cam=0, q=0,
+                     kpsi=0, psim=0, Caref=0, sigmay0h=0, y1=0, y2=0, y4=0,
+                     y0=0, y3=0, vref=0, ad=0, cd=0, bd=0, dd=0, **kwargs):
     # SMC calcium
     rho_smc = (Kd+calcium_smc)**2/((Kd+calcium_smc)**2 + Kd*Bt)
     calcium_smc_dt = -rho_smc * (alpha*Ica + kca*calcium_smc)
@@ -256,7 +139,7 @@ def vessel_mechanics(t, calcium_smc, x, yy, omega, Ica):
     
 
 
-def nvu(t, y, Jrho_IN, x_rel):
+def nvu(t, y, Jrho_IN, x_rel, units, param):
     potassium_s = y[0]
     ip3 = y[1]
     calcium_a = y[2]
@@ -277,27 +160,28 @@ def nvu(t, y, Jrho_IN, x_rel):
     amyloid = y[17]
     
     # Synaptic space
-    potassium_s_dt, JSigK = synapse(t, potassium_s, Jrho_IN)    
+    potassium_s_dt, JSigK = synapse(t, potassium_s, Jrho_IN, **param)    
     
     # Astrocytic space
     ip3_dt, calcium_a_dt, h_dt, ss_dt, eet_dt, nbk_dt, Vk_dt, Ibk, Jtrpv =\
         astrocyte(t, ip3, calcium_a, h, ss, Vk, calcium_p, x, eet, nbk,
-                  Jrho_IN, x_rel, JSigK)    
+                  Jrho_IN, x_rel, JSigK, **units, **param)    
     
     # Perivascular space
     potassium_p_dt, calcium_p_dt, vkir, Ikir, Ica = perivascular_space(
-            potassium_p, k, Vm, calcium_p, Ibk, Jtrpv)   
+            potassium_p, k, Vm, calcium_p, Ibk, Jtrpv, **units, **param)   
     
     # Ion currents
-    k_dt, Vm_dt, n_dt = ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir)
+    k_dt, Vm_dt, n_dt = ion_currents(Vm, k, calcium_smc, n, vkir, Ica, Ikir,
+                                     **units, **param)
     
     # Vessel mechanics
     x_dt, calcium_smc_dt, omega_dt, yy_dt = vessel_mechanics(t, calcium_smc, x,
-                                                             yy, omega, Ica)
+                                            yy, omega, Ica, **units, **param)
     
     # Amyloid
-    k_n = 0.076 * 1/hr
-    k_p = 0.083 * 1/hr
+    k_n = 0.076 * 1/units['hr']
+    k_p = 0.083 * 1/units['hr']
     r = x/(2*np.pi)
     r_rel = x_rel/(2*np.pi)
     amyloid_dt = k_n*amyloid - k_p*amyloid * r/r_rel
@@ -330,7 +214,7 @@ def init(r0):
             calcium_p, k, Vm, n, x, calcium_smc, omega, yy, amyloid]
     
     
-def K_glut_release(t1, t2):
+def K_glut_release(t1, t2, uM=0, s=0, **kwargs):
     sizeJrho = 1600
     sec = sizeJrho/(t2-t1)
     Max_neural_Kplus = 0.55*uM/s
@@ -370,7 +254,7 @@ def run_simulation(fun, time, y0, *args):
     return sol
 
 
-def plot_solution(t, sol, fig_dims):
+def plot_solution(t, sol, fig_dims, uM=0, mV=0, mM=0, um=0, **kwargs):
     f, axarr = plt.subplots(4, 2)
     f.set_size_inches(fig_dims[0], h=fig_dims[1])
     # left side
@@ -404,24 +288,10 @@ def plot_solution(t, sol, fig_dims):
     plt.show()
     
     
-def perivascular_drainage(t, r, r_diff):
-    a = r - r_diff
-    b = r + r_diff
-    Pbm = -dp * a**2/(b**2 - a**2) * (1 - b**2/r**2)
-    return Pbm
-
-
-def plot_Ica(t, Vm):
-    v1 = (-17.4-(12*(dp/mmHg)/200))*mV
-    minf = 0.5 * (1 + np.tanh((Vm-v1)/v2))
-    Ica = gca * minf * (Vm - vca)
-    plt.plot(t, Vm)
-    plt.show()
-    return None
+def main(param, fig_dims):
+    units, param = utils.read_config('../parameter.cfg')
     
-    
-def main(fig_dims):
-    r0 = 20*um
+    r0 = 20 * units['um']
     y0 = init(r0)
     x_rel = y0[13]
     sol = np.zeros(len(y0))
@@ -433,19 +303,19 @@ def main(fig_dims):
     Jrho_IN = np.zeros((nt,3))
     Jrho_IN[:,0] = np.linspace(t1, t2, nt)
     t = np.linspace(t1, t2, nt)
-    sol = run_simulation(nvu, t, y0, Jrho_IN, x_rel)
+    sol = run_simulation(nvu, t, y0, Jrho_IN, x_rel, units, param)
     y0 = sol[-1,:]
     
     # Plot solution
-    plot_solution(t, sol, fig_dims)
+    plot_solution(t, sol, fig_dims, **units)
     
     # Simulation
     t1 = 0
     t2 = 50 
     nt = 200
-    Jrho_IN = K_glut_release(t1, t2)
+    Jrho_IN = K_glut_release(t1, t2, **units)
     t = np.linspace(t1, t2, nt)    
-    sol = run_simulation(nvu, t, y0, Jrho_IN, x_rel)
+    sol = run_simulation(nvu, t, y0, Jrho_IN, x_rel, units, param)
     
 #    plt.figure(figsize=fig_dims)
 #    plt.plot(t, sol[:,14]/uM, label="", lw=2)
@@ -453,18 +323,20 @@ def main(fig_dims):
 #    plt.show()
     
     # Plot solution
-    plot_solution(t, sol, fig_dims)
+    plot_solution(t, sol, fig_dims, **units)
     
     # Export radius data
-    r = sol[:,13]/(2*np.pi)
-    r_diff = (Sx/Lx)/2
-    Ra = r - r_diff
-    Rb = r + r_diff
-    np.savetxt('data/Ra.csv', Ra/um, delimiter=',')
-    np.savetxt('data/Rb.csv', Rb/um, delimiter=',')
+#    r = sol[:,13]/(2*np.pi)
+#    r_diff = (param['Sx']/param['Lx'])/2
+#    Ra = r - r_diff
+#    Rb = r + r_diff
+#    np.savetxt('data/Ra.csv', Ra/units['um'], delimiter=',')
+#    np.savetxt('data/Rb.csv', Rb/units['um'], delimiter=',')
     
     
 if __name__ == "__main__":
+    script, param = sys.argv
+    
     plt.rcParams['axes.labelsize'] = 9
     plt.rcParams['xtick.labelsize'] = 9
     plt.rcParams['ytick.labelsize'] = 9
@@ -481,4 +353,4 @@ if __name__ == "__main__":
     fig_height_in = fig_width_in * golden_ratio   # figure height in inches
     fig_dims    = [fig_width_in, fig_height_in] # fig dims as a list
     
-    main(fig_dims)
+    main(param, fig_dims)
