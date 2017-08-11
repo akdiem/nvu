@@ -2,8 +2,15 @@
 
 from fenics import *
 from matplotlib import pyplot
+import numpy as np
 
-parameters ["plotting_backend"] = "matplotlib"
+parameters["plotting_backend"] = "matplotlib"
+prm = parameters['krylov_solver']
+prm['absolute_tolerance'] = 1e-7
+prm['relative_tolerance'] = 1e-4
+prm['maximum_iterations'] = 1000
+
+#list_linear_solver_methods()
 
 # Units
 cm = 1e-2
@@ -14,8 +21,8 @@ pa = 10 * dyn/cm**2
 # Scaled variables
 r0 = 20*um
 R = r0/r0
-Le = 10*R
-W = 0.2*R
+Le = 10*r0
+W = 0.2*r0
 Disp = 4*um/r0
 mu0 = 1.13e5*pa
 Mu = mu0/mu0
@@ -62,10 +69,9 @@ u = Function(V)
 solve(a == L, u, bcs)
 
 # Plot solution
-u = u
-p1 = plot(u, title='Displacement', mode='displacement')
-pyplot.colorbar(p1)
-pyplot.show()
+#p1 = plot(u, title='Displacement', mode='displacement')
+#pyplot.colorbar(p1)
+#pyplot.show()
 
 # Plot stress
 W = TensorFunctionSpace(mesh, "Lagrange", 2)
@@ -77,12 +83,12 @@ sig = project(sigma(u), W)
 #pyplot.colorbar(p2)
 #pyplot.show()
 
-#print(Le/50)
-
+print(np.max(s11.vector().array())*mu0/pa)
+print(np.max(u.vector().array())*r0/um)
 
 #
 # Save solution to file in VTK format
-File('data/sigr_1.pvd') << s11
+#File('data/sigr_7.pvd') << s11
 #File('data/sigz.pvd') << s22
 
 # Hold plot
