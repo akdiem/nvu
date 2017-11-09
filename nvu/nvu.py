@@ -116,7 +116,7 @@ def astrocyte(t, ip3, calcium_a, h, ss, Vk, calcium_p, x, eet, nbk, Jrho_IN,
     Jpump = Vmax * calcium_a**2 / (calcium_a**2 + Kp**2) # eq 8
     Jleak = Pl * (1 - calcium_a/calcium_er) # eq 9
     Itrpv = gtrpv * ss * (Vk - vtrpv) # eq 10
-    Jtrpv = -Itrpv/(Castr*gamma) # eq 10
+    Jtrpv = Itrpv/(Castr*gamma) # eq 10
     if trpv:
         calcium_a_dt = beta * (Jip3 - Jpump + Jleak + Jtrpv) # eq 5
     else:
@@ -178,21 +178,21 @@ def perivascular_space(potassium_p, k, Vm, calcium_p, Ibk, Jtrpv, Castr,
     float
         Value of Ica (eq 36) at current time step.
     """
-    Jbk = Ibk/(Castr*gamma)
-    gkir = gkir0 * np.sqrt(potassium_p/mM)
-    vkir = vkir1 * np.log10(potassium_p/mM) - vkir2
-    Ikir = gkir * k * (Vm - vkir)
-    Jkir = Ikir/(Csmc*gamma)
+    Jbk = Ibk/(Castr*gamma) # eq 22
+    gkir = gkir0 * np.sqrt(potassium_p/mM) # eq 25
+    vkir = vkir1 * np.log10(potassium_p/mM) - vkir2 # eq 26
+    Ikir = gkir * k * (Vm - vkir) # eq 24
+    Jkir = Ikir/(Csmc*gamma) # 22
     potassium_p_dt = Jbk/VRpa + Jkir/VRps - Rdecay * (potassium_p -\
-        potassium_p_min)
-    v1 = (-17.4-(12*(dp/mmHg)/200))*mV
-    minf = 0.5 * (1 + np.tanh((Vm-v1)/v2))
-    Ica = gca * minf * (Vm - vca)
-    Jca = -Ica/(Csmc*gamma)
+        potassium_p_min) # eq 22
+    v1 = (-17.4-12*(dp/mmHg)/200)*mV # eq 38
+    minf = 0.5 * (1 + np.tanh((Vm-v1)/v2)) # eq 37
+    Ica = gca * minf * (Vm - vca) # eq 36
+    Jca = -Ica/(Csmc*gamma) # not defined in manuscript
     if trpv:
-        calcium_p_dt = -Jtrpv/VRpa - Jca/VRps - Cadecay * (calcium_p - calcium_p_min)
+        calcium_p_dt = -Jtrpv/VRpa - Jca/VRps - Cadecay * (calcium_p - calcium_p_min) # eq 23
     else:
-        calcium_p_dt = -Jca/VRps - Cadecay * (calcium_p - calcium_p_min)
+        calcium_p_dt = -Jca/VRps - Cadecay * (calcium_p - calcium_p_min) # eq 23
     return potassium_p_dt, calcium_p_dt, vkir, Ikir, Ica
 
 
@@ -932,6 +932,98 @@ def plot_Vk(t, sol, fig_dims, r0, um, mV, fname='', **kwargs):
     ax2.set_ylim([-10, 100])
     ax2.set_ylabel("vessel dilation (%)")
     
+    if fname == '':
+        plt.show()
+    else:
+        plt.savefig(fname, dpi=600, bbox_inches='tight')
+        
+        
+def plot_currents(t, sol, fig_dims, pA, JSigKkNa, KKoa, Castr, gamma, gbk, vbk,
+                  gtrpv, vtrpv, fname='', **kwargs):
+    """Plot artery radial strain and perivascular Ca2+.
+
+    Parameters
+    --------------
+    t : array
+        Time.
+    sol : array
+        Array containing model solution.
+    fig_dims : tuple
+        Figure dimensions.
+    x_rel : float
+        Value of the relaxed vessel circumference.
+    """
+    plt.rcParams['axes.labelsize'] = 9
+    plt.rcParams['xtick.labelsize'] = 9
+    plt.rcParams['ytick.labelsize'] = 9
+    plt.rcParams['legend.fontsize'] = 9
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['font.serif'] = ['Arial']
+    
+    potassium_s = sol[:,1]
+    ss = sol[:,4]
+    nbk = sol[:,6]
+    Vk = sol[:,7]
+    JSigK = JSigKkNa * potassium_s/(potassium_s + KKoa)
+    Isigk = -JSigK * Castr * gamma
+    Ibk = gbk * nbk * (Vk - vbk)
+    Itrpv = gtrpv * ss * (Vk - vtrpv)
+    
+    f, ax1 = plt.subplots()
+    f.set_size_inches(fig_dims[0], h=fig_dims[1]/3)
+    
+    ax1.plot(t, Isigk/pA, label="Isigk", lw=2)
+    ax1.plot(t, Ibk/pA, label="Ibk", lw=2)
+    ax1.plot(t, Itrpv/pA, label="Itrpv", lw=2)
+    ax1.legend()
+    ax1.set_ylabel("current (pA)")
+    ax1.set_xlabel("time (s)")
+    
+    if fname == '':
+        plt.show()
+    else:
+        plt.savefig(fname, dpi=600, bbox_inches='tight')
+        
+    
+def plot_disp(t, sol, fig_dims, Jrho_IN, um, uM, fname='', **kwargs):
+    """Plot artery radial strain and perivascular Ca2+.
+
+    Parameters
+    --------------
+    t : array
+        Time.
+    sol : array
+        Array containing model solution.
+    fig_dims : tuple
+        Figure dimensions.
+    x_rel : float
+        Value of the relaxed vessel circumference.
+    """
+    plt.rcParams['axes.labelsize'] = 9
+    plt.rcParams['xtick.labelsize'] = 9
+    plt.rcParams['ytick.labelsize'] = 9
+    plt.rcParams['legend.fontsize'] = 9
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['font.serif'] = ['Arial']
+
+    r = sol[:,13]/(2*np.pi*um)
+    
+    f, axarr = plt.subplots(2, 1)
+    f.set_size_inches(fig_dims[0]/1.5, h=fig_dims[1]/2)
+    
+    axarr[0].plot(Jrho_IN[:,0], Jrho_IN[:,1]/uM, label="K+", lw=2, color='k')
+    axarr[0].plot(Jrho_IN[:,0], Jrho_IN[:,2], label="Glu", lw=2, color='k', ls='--')
+    axarr[0].set_ylabel("K+ (uM)\nGlu (1)")
+    axarr[1].plot(t, r, lw=2, color='k')
+    axarr[1].set_ylabel("r (um)")
+    
+    f.suptitle("time (s)", y=-0.1)
+    
+    # Fine-tune figure; hide x ticks for top plots
+    plt.setp(axarr[0].get_xticklabels(), visible=False)
+
+    # Fine-tune figure; make subplots farther from each other.
+    f.subplots_adjust(wspace=0.3, hspace=0.2)
     if fname == '':
         plt.show()
     else:

@@ -136,12 +136,20 @@ def main(fparam, fig_dims):
     t = np.linspace(t1, t2, nt)    
     sol = nvu.run_simulation(t, y0, Jrho_IN, x_rel, units, param, atol=atol, rtol=rtol)
     
+    # Simulation without TRPV channels
+    sol_nt = nvu.run_simulation(t, y0, Jrho_IN, x_rel, units, param, atol=atol, rtol=rtol, mode='notrpv')
+    
     #nvu.plot_input(Jrho_IN, fig_dims, fname='../article/figures/input.png', **units)
 #    nvu.plot_input(Jrho_IN, fig_dims, **units)
     
     # Plot solution
-    nvu.plot_solution(t, sol, fig_dims, fname='../article/figures/fig1.png', **units)
+#    nvu.plot_solution(t, sol, fig_dims, fname='../article/figures/fig1.png', **units)
 #    nvu.plot_solutions(t, sol, sol_nt, fig_dims, fname='../article/figures/no_trpv.png', **units)
+#    nvu.plot_solutions(t, sol, sol_nt, fig_dims, **units)
+    
+    nvu.plot_disp(t, sol, fig_dims, Jrho_IN, fname='/home/alexandra/papers/2017-nvu-drainage/figures/nvu_model_bw.png', **units)
+    
+#    np.savetxt('./data/disp.csv', sol[:,13]/(2*np.pi)-r0, delimiter=',')
     
 
 if __name__ == "__main__":
@@ -150,7 +158,7 @@ if __name__ == "__main__":
     np.seterr(over='ignore')
     
     WIDTH = 510  # the number latex spits out
-    FACTOR = 1.0  # the fraction of the width you'd like the figure to occupy
+    FACTOR = 0.6  # the fraction of the width you'd like the figure to occupy
     fig_width_pt  = WIDTH * FACTOR
     inches_per_pt = 1.0 / 72.27
     golden_ratio  = (np.sqrt(5) - 1.0) / 2  # because it looks good
